@@ -1,0 +1,21 @@
+[package]
+name = "pg2sqlite"
+version = "0.1.0"
+authors = ["d.molodtsov <d.molodtsov@china.danieli.com>"]
+
+[dependencies]
+colored = "1.6"
+clap = "2.3"
+#zip = "0.4"
+chrono="0.4"
+
+[dependencies.rusqlite]
+version = "0.14.0"
+features = ["bundled","chrono"]
+
+[dependencies.postgres]
+version="0.15"
+features = ["with-chrono"]
+
+
+
