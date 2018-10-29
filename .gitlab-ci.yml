@@ -21,4 +21,4 @@ image: "rust:latest"
 build:cargo:
   script:
   - rustc --version && cargo --version      # Print version info for debugging
-  - cargo bulid
+  - cargo build
