@@ -11,7 +11,7 @@ extern crate colored;
 extern crate postgres;
 extern crate rusqlite;
 extern crate chrono;
-//extern crate zip;
+extern crate zip;
 
 
 use std::path::Path;
@@ -19,6 +19,8 @@ use clap::{App, Arg};
 use colored::*;
 use postgres::*;
 use chrono::{NaiveDateTime, NaiveDate,NaiveTime};
+use rusqlite::{params};
+//use zip::write::{FileOptions, ZipWriter};
 
 fn main() {
     let matches=App::new("pg2sqlite")
@@ -239,7 +241,7 @@ fn generate_sqlite_schema(con: &rusqlite::Connection,t_defs: &mut Vec<TableDef>)
             sql.push_str(&format!("{} {} {},",col.c_name,col.c_type,col.c_null));
         };
         sql.pop();sql.push(')'); // Replace trailing comma to closed brucket
-        con.execute(&*sql,&[]).unwrap();
+        con.execute(&*sql, params![]).unwrap();
     }
 }
 
@@ -258,7 +260,7 @@ enum SqlVal{
 }
 
 fn map_postgres_row_to_sqlite_params<'a>(row : &postgres::rows::Row,
-                                pvals  : &'a mut Vec<SqlVal>)->Vec<&'a rusqlite::types::ToSql>{
+                                pvals  : &'a mut Vec<SqlVal>)->Vec<&'a dyn rusqlite::types::ToSql>{
     
     macro_rules!  add_param{
         ($opt:expr,f32,$typ2:expr,$ok:ident) => {
@@ -296,7 +298,7 @@ fn map_postgres_row_to_sqlite_params<'a>(row : &postgres::rows::Row,
         }
     }
 
-    let mut params : Vec<&'a rusqlite::types::ToSql> = vec![];
+    let mut params : Vec<&'a dyn rusqlite::types::ToSql> = vec![];
     for i in 0usize..row.len() {
 
         let mut ok=false;
@@ -342,9 +344,9 @@ fn export_data(con_pg: &postgres::Connection,con_sqlite: &rusqlite::Connection,
                t_defs: &mut Vec<TableDef>,
                batch_size : usize){
     for tbl in t_defs{
-        println!("Exporting table {} ... ",tbl.name);
+        println!("Exporting table {} ... ",tbl.name.yellow().bold());
 
-        let mut sql : String = format!("SELECT * FROM {}",tbl.name);
+        let sql : String = format!("SELECT * FROM {}",tbl.name);
         let mut sqli : String = format!("INSERT INTO {} VALUES(",tbl.name);
         for _ in &tbl.column_defs{
             sqli.push_str(&format!("{},","?"));
@@ -353,7 +355,7 @@ fn export_data(con_pg: &postgres::Connection,con_sqlite: &rusqlite::Connection,
   
         let mut sti=con_sqlite.prepare(&*sqli).unwrap();
 
-        con_sqlite.execute("BEGIN",&[]).unwrap();
+        con_sqlite.execute("BEGIN",params![]).unwrap();
         let mut n_exported=0usize;   
 
         const PRINT_BATCH_SIZE :usize = 1000;let mut prn = 0usize;
@@ -370,12 +372,12 @@ fn export_data(con_pg: &postgres::Connection,con_sqlite: &rusqlite::Connection,
                 prn=0;
             }
             if com==batch_size{
-                con_sqlite.execute("COMMIT",&[]).unwrap();
-                con_sqlite.execute("BEGIN",&[]).unwrap();
+                con_sqlite.execute("COMMIT",params![]).unwrap();
+                con_sqlite.execute("BEGIN",params![]).unwrap();
                 com=0;
             }
         }
-        con_sqlite.execute("COMMIT",&[]).unwrap();
+        con_sqlite.execute("COMMIT",params![]).unwrap();
         print!("\rExported {} rows",n_exported);
         println!(); 
     }
@@ -397,6 +399,7 @@ fn compress(filename: &str) -> zip::result::ZipResult<()>
     zip.write_all(LOREM_IPSUM)?;
 
     zip.finish()?;
+
     Ok(())
 }*/
 
